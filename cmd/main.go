@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"RSSHub/internal/adapters/db"
+	"RSSHub/internal/adapters/rss"
 	"RSSHub/internal/domain"
 )
 
@@ -107,6 +108,37 @@ func main() {
 				a.Title,
 				a.Link,
 			)
+		}
+
+	case "fetch-once":
+		fetchCmd := flag.NewFlagSet("fetch-once", flag.ExitOnError)
+		feedName := fetchCmd.String("feed-name", "", "Feed name to fetch")
+		fetchCmd.Parse(os.Args[2:])
+
+		if *feedName == "" {
+			fmt.Println("Usage: rsshub fetch-once --feed-name <name>")
+			os.Exit(1)
+		}
+
+		feeds, _ := repo.ListFeeds(10)
+		var url string
+		for _, f := range feeds {
+			if f.Name == *feedName {
+				url = f.URL
+			}
+		}
+		if url == "" {
+			log.Fatalf("feed '%s' not found", *feedName)
+		}
+
+		feed, err := rss.FetchAndParse(url)
+		if err != nil {
+			log.Fatalf("failed to fetch RSS: %v", err)
+		}
+
+		fmt.Println("Feed:", feed.Channel.Title)
+		for i, item := range feed.Channel.Items {
+			fmt.Printf("%d. %s (%s)\n", i+1, item.Title, item.PubDate)
 		}
 
 	default:
