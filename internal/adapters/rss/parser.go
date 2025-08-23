@@ -10,6 +10,19 @@ import (
 
 // --- Structs for XML mapping ---
 
+var timeLayouts = []string{
+	time.RFC1123Z,
+	time.RFC1123,
+	time.RFC3339,
+	time.RFC822,
+	time.RFC822Z,
+	time.RFC850,
+	time.ANSIC,
+	time.UnixDate,
+	time.RubyDate,
+	"Mon, 02 Jan 2006 15:04:05 -0700", // common RSS custom format
+}
+
 type RSSFeed struct {
 	Channel struct {
 		Title       string    `xml:"title"`
@@ -53,14 +66,11 @@ func FetchAndParse(url string) (*RSSFeed, error) {
 	return &feed, nil
 }
 
-// ParseTime safely converts pubDate into Go's time.Time
-func ParseTime(pubDate string) (time.Time, error) {
-	// RSS pubDate example: Mon, 06 Sep 2021 12:00:00 GMT
-	layout := time.RFC1123Z // covers "Mon, 02 Jan 2006 15:04:05 -0700"
-	t, err := time.Parse(layout, pubDate)
-	if err != nil {
-		// fallback: try without timezone offset
-		t, err = time.Parse(time.RFC1123, pubDate)
+func ParsePubDate(pubDate string) (time.Time, error) {
+	for _, layout := range timeLayouts {
+		if t, err := time.Parse(layout, pubDate); err == nil {
+			return t, nil
+		}
 	}
-	return t, err
+	return time.Time{}, fmt.Errorf("could not parse date: %s", pubDate)
 }

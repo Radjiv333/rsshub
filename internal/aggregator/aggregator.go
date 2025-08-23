@@ -21,14 +21,17 @@ type Aggregator struct {
 	jobs    chan domain.Feed
 	workers int
 	repo    domain.Repository
+
+	stopWorkers chan struct{}
 }
 
 func NewAggregator(defaultInterval time.Duration, repo domain.Repository) *Aggregator {
 	return &Aggregator{
-		interval: defaultInterval,
-		workers:  3,                          // default pool size
-		jobs:     make(chan domain.Feed, 100), // buffered channel
-		repo:     repo,
+		interval:    defaultInterval,
+		workers:     3,
+		jobs:        make(chan domain.Feed, 100),
+		repo:        repo,
+		stopWorkers: make(chan struct{}),
 	}
 }
 
@@ -44,13 +47,13 @@ func (a *Aggregator) Start(ctx context.Context) error {
 	a.running = true
 	a.mu.Unlock()
 
-	// start workers
+	// Start the worker pool with the desired number of workers
 	for i := 0; i < a.workers; i++ {
 		a.wg.Add(1)
 		go a.worker(ctx, i)
 	}
 
-	// ticker loop
+	// Ticker loop for loading and processing feeds at regular intervals
 	a.wg.Add(1)
 	go func() {
 		defer a.wg.Done()
@@ -60,7 +63,7 @@ func (a *Aggregator) Start(ctx context.Context) error {
 				return
 			case <-a.ticker.C:
 				fmt.Println("Tick: loading feeds…")
-				feeds, err := a.repo.ListFeeds(5) // take 5 oldest feeds
+				feeds, err := a.repo.ListFeeds(5) // Take 5 oldest feeds
 				if err != nil {
 					fmt.Printf("error loading feeds: %v\n", err)
 					continue
@@ -98,23 +101,31 @@ func (a *Aggregator) SetInterval(d time.Duration) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
+	// Only stop the ticker if it's running
 	if a.running {
-		a.ticker.Stop()
+		fmt.Printf("Changing interval from %v to %v\n", a.interval, d)
+		a.ticker.Stop() // Stop the old ticker
+
+		// Create a new ticker with the new duration
 		a.ticker = time.NewTicker(d)
 	}
+
 	a.interval = d
 	fmt.Printf("Interval changed to %v\n", d)
 }
 
 // --- Worker function ---
-
 func (a *Aggregator) worker(ctx context.Context, id int) {
 	defer a.wg.Done()
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-a.stopWorkers:
+			fmt.Printf("[worker %d] stopping\n", id)
+			return
 		case feed := <-a.jobs:
+			// Fetch and parse RSS for the feed
 			fmt.Printf("[worker %d] fetching %s (%s)\n", id, feed.Name, feed.URL)
 
 			parsed, err := rss.FetchAndParse(feed.URL)
@@ -123,6 +134,7 @@ func (a *Aggregator) worker(ctx context.Context, id int) {
 				continue
 			}
 
+			// Process each article and save it to the database
 			for _, item := range parsed.Channel.Items {
 				article := domain.Article{
 					FeedID:      feed.ID,
@@ -134,11 +146,12 @@ func (a *Aggregator) worker(ctx context.Context, id int) {
 				}
 
 				// Parse pubDate if possible
-				parsedTime, err := time.Parse(time.RubyDate, item.PubDate)
+				parsedTime, err := rss.ParsePubDate(item.PubDate)
 				if err == nil {
 					article.PublishedAt = parsedTime
 				} else {
-					article.PublishedAt = time.Now() // fallback
+					fmt.Printf("[worker %d] warning: could not parse date '%s': %v\n", id, item.PubDate, err)
+					article.PublishedAt = time.Now()
 				}
 
 				// Save to DB
@@ -150,11 +163,37 @@ func (a *Aggregator) worker(ctx context.Context, id int) {
 				}
 			}
 
-			// Update feed timestamp
+			// Update the feed timestamp after processing
 			feed.UpdatedAt = time.Now()
 			if err := a.repo.UpdateFeedTimestamp(feed.ID, feed.UpdatedAt); err != nil {
 				fmt.Printf("[worker %d] failed to update feed timestamp: %v\n", id, err)
 			}
 		}
 	}
+}
+
+func (a *Aggregator) Resize(workers int) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if workers == a.workers {
+		return nil // no change
+	}
+
+	diff := workers - a.workers
+	if diff > 0 {
+		// Scale up: add more workers
+		for i := 0; i < diff; i++ {
+			a.wg.Add(1)
+			go a.worker(context.Background(), a.workers+i)
+		}
+	} else {
+		// Scale down: stop some workers
+		for i := 0; i < -diff; i++ {
+			a.stopWorkers <- struct{}{}
+		}
+	}
+
+	a.workers = workers
+	return nil
 }

@@ -17,17 +17,19 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: rsshub COMMAND [OPTIONS]")
-		fmt.Println("Commands: add, list, delete")
-		os.Exit(1)
-	}
-
 	repo, err := db.NewPostgresRepository()
 	if err != nil {
 		log.Fatalf("DB connect failed: %v", err)
 	}
 	defer repo.Close()
+
+	agg := aggregator.NewAggregator(3*time.Minute, repo) // default interval 3m
+
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: rsshub COMMAND [OPTIONS]")
+		fmt.Println("Commands: add, list, delete")
+		os.Exit(1)
+	}
 
 	switch os.Args[1] {
 	case "add":
@@ -206,6 +208,43 @@ func main() {
 			fmt.Println("Aggregator stopped cleanly")
 		}
 
+	case "set-interval":
+		intervalCmd := flag.NewFlagSet("set-interval", flag.ExitOnError)
+		interval := intervalCmd.String("interval", "", "New interval for fetching feeds")
+		intervalCmd.Parse(os.Args[2:])
+
+		if *interval == "" {
+			fmt.Println("Usage: rsshub set-interval --interval <duration>")
+			os.Exit(1)
+		}
+
+		// Convert interval string to duration
+		d, err := time.ParseDuration(*interval)
+		if err != nil {
+			fmt.Printf("Invalid duration: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Set the new interval
+		agg.SetInterval(d)
+
+	case "set-workers":
+		workersCmd := flag.NewFlagSet("set-workers", flag.ExitOnError)
+		workers := workersCmd.Int("workers", 0, "Number of workers to use")
+		workersCmd.Parse(os.Args[2:])
+
+		if *workers <= 0 {
+			fmt.Println("Usage: rsshub set-workers --workers <number>")
+			os.Exit(1)
+		}
+
+		err := agg.Resize(*workers)
+		if err != nil {
+			fmt.Printf("Error resizing workers: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Number of workers changed to: %d\n", *workers)
 	default:
 		fmt.Printf("Unknown command: %s\n", os.Args[1])
 		os.Exit(1)
