@@ -1,4 +1,4 @@
-PROJECT_NAME=RSSHub
+PROJECT_NAME=rsshub
 
 DC=docker-compose
 

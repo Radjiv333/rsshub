@@ -8,13 +8,13 @@ CREATE TABLE feeds (
     url TEXT NOT NULL
 );
 
-CREATE TABLE articles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+CREATE TABLE IF NOT EXISTS articles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
     title TEXT NOT NULL,
-    link TEXT UNIQUE NOT NULL,
-    published_at TIMESTAMP,
+    link TEXT NOT NULL UNIQUE,
     description TEXT,
-    feed_id UUID NOT NULL REFERENCES feeds(id) ON DELETE CASCADE
+    published_at TIMESTAMP,
+    feed_id UUID REFERENCES feeds(id) ON DELETE CASCADE
 );
