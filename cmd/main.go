@@ -1,14 +1,18 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"RSSHub/internal/adapters/db"
 	"RSSHub/internal/adapters/rss"
+	"RSSHub/internal/aggregator"
 	"RSSHub/internal/domain"
 )
 
@@ -86,8 +90,8 @@ func main() {
 
 	case "articles":
 		articlesCmd := flag.NewFlagSet("articles", flag.ExitOnError)
-		feedName := articlesCmd.String("feed-name", "", "Feed name")
-		num := articlesCmd.Int("num", 3, "Number of articles to show (default 3)")
+		feedName := articlesCmd.String("feed-name", "", "Feed name to list articles for")
+		num := articlesCmd.Int("num", 3, "Number of articles to show")
 		articlesCmd.Parse(os.Args[2:])
 
 		if *feedName == "" {
@@ -95,12 +99,26 @@ func main() {
 			os.Exit(1)
 		}
 
-		articles, err := repo.ListArticles(*feedName, *num)
-		if err != nil {
-			log.Fatalf("failed to list articles: %v", err)
+		feeds, _ := repo.ListFeeds(100)
+		var feed domain.Feed
+		found := false
+		for _, f := range feeds {
+			if f.Name == *feedName {
+				feed = f
+				found = true
+				break
+			}
+		}
+		if !found {
+			log.Fatalf("feed '%s' not found", *feedName)
 		}
 
-		fmt.Printf("Feed: %s\n\n", *feedName)
+		articles, err := repo.ListArticlesByFeed(feed.ID, *num)
+		if err != nil {
+			log.Fatalf("failed to fetch articles: %v", err)
+		}
+
+		fmt.Printf("Feed: %s\n\n", feed.Name)
 		for i, a := range articles {
 			fmt.Printf("%d. [%s] %s\n   %s\n\n",
 				i+1,
@@ -120,25 +138,72 @@ func main() {
 			os.Exit(1)
 		}
 
-		feeds, _ := repo.ListFeeds(10)
-		var url string
+		feeds, _ := repo.ListFeeds(50)
+		var feed domain.Feed
+		found := false
 		for _, f := range feeds {
 			if f.Name == *feedName {
-				url = f.URL
+				feed = f
+				found = true
+				break
 			}
 		}
-		if url == "" {
+		if !found {
 			log.Fatalf("feed '%s' not found", *feedName)
 		}
 
-		feed, err := rss.FetchAndParse(url)
+		parsed, err := rss.FetchAndParse(feed.URL)
 		if err != nil {
 			log.Fatalf("failed to fetch RSS: %v", err)
 		}
 
-		fmt.Println("Feed:", feed.Channel.Title)
-		for i, item := range feed.Channel.Items {
-			fmt.Printf("%d. %s (%s)\n", i+1, item.Title, item.PubDate)
+		fmt.Println("Feed:", parsed.Channel.Title)
+
+		for _, item := range parsed.Channel.Items {
+			article := domain.Article{
+				FeedID:      feed.ID,
+				Title:       item.Title,
+				Link:        item.Link,
+				Description: item.Description,
+				CreatedAt:   time.Now(),
+				UpdatedAt:   time.Now(),
+			}
+
+			parsedTime, err := time.Parse(time.RubyDate, item.PubDate)
+			if err == nil {
+				article.PublishedAt = parsedTime
+			} else {
+				// fallback: use now if parsing fails
+				article.PublishedAt = time.Now()
+			}
+
+			err = repo.AddArticle(article)
+			if err != nil {
+				log.Printf("skipping article '%s': %v\n", article.Title, err)
+			} else {
+				fmt.Printf("saved: %s\n", article.Title)
+			}
+		}
+
+	case "fetch":
+		fetchCmd := flag.NewFlagSet("fetch", flag.ExitOnError)
+		interval := fetchCmd.Int("interval", 3, "Fetch interval in minutes")
+		fetchCmd.Parse(os.Args[2:])
+
+		agg := aggregator.NewAggregator(time.Duration(*interval)*time.Minute, repo)
+
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+
+		if err := agg.Start(ctx); err != nil {
+			log.Fatalf("failed to start aggregator: %v", err)
+		}
+
+		<-ctx.Done() // wait for Ctrl+C
+		if err := agg.Stop(); err != nil {
+			log.Printf("aggregator stopped with error: %v", err)
+		} else {
+			fmt.Println("Aggregator stopped cleanly")
 		}
 
 	default:

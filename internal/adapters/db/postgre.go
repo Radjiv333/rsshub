@@ -3,11 +3,14 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"RSSHub/internal/domain"
 
 	_ "github.com/lib/pq"
 )
+
+var _ domain.Repository = (*PostgresRepository)(nil)
 
 type PostgresRepository struct {
 	db *sql.DB
@@ -88,12 +91,11 @@ func (r *PostgresRepository) DeleteFeed(name string) error {
 // AddArticle inserts a new article (ignores duplicates by link)
 func (r *PostgresRepository) AddArticle(article domain.Article) error {
 	query := `
-		INSERT INTO articles (id, created_at, updated_at, title, link, description, published_at, feed_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO articles (created_at, updated_at, title, link, description, published_at, feed_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (link) DO NOTHING;
 	`
 	_, err := r.db.Exec(query,
-		article.ID,
 		article.CreatedAt,
 		article.UpdatedAt,
 		article.Title,
@@ -132,4 +134,44 @@ func (r *PostgresRepository) ListArticles(feedName string, num int) ([]domain.Ar
 		articles = append(articles, a)
 	}
 	return articles, nil
+}
+
+// ListArticlesByFeed returns the N most recent articles for a feed
+func (r *PostgresRepository) ListArticlesByFeed(feedID string, limit int) ([]domain.Article, error) {
+	query := `
+		SELECT id, feed_id, title, link, description, published_at, created_at, updated_at
+		FROM articles
+		WHERE feed_id = $1
+		ORDER BY published_at DESC
+		LIMIT $2;`
+
+	rows, err := r.db.Query(query, feedID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var articles []domain.Article
+	for rows.Next() {
+		var a domain.Article
+		err := rows.Scan(
+			&a.ID, &a.FeedID, &a.Title, &a.Link,
+			&a.Description, &a.PublishedAt, &a.CreatedAt, &a.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		articles = append(articles, a)
+	}
+
+	return articles, nil
+}
+
+func (r *PostgresRepository) UpdateFeedTimestamp(feedID string, updatedAt time.Time) error {
+	_, err := r.db.Exec(`
+		UPDATE feeds 
+		SET updated_at = $1 
+		WHERE id = $2
+	`, updatedAt, feedID)
+	return err
 }

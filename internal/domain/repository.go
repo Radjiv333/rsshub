@@ -1,13 +1,19 @@
 package domain
 
-type FeedRepository interface {
-	AddFeed(feed Feed) error
-	DeleteFeed(name string) error
-	ListFeeds(limit int) ([]Feed, error)
-	GetFeedByName(name string) (Feed, error)
-}
+import "time"
 
-type ArticleRepository interface {
-	AddArticles([]Article) error
-	GetLatestArticles(feedName string, limit int) ([]Article, error)
+// Repository defines all DB operations the app needs.
+type Repository interface {
+	// Feeds
+	AddFeed(feed Feed) error
+	ListFeeds(limit int) ([]Feed, error)
+	DeleteFeed(name string) error
+	UpdateFeedTimestamp(feedID string, updatedAt time.Time) error
+
+	// Articles
+	AddArticle(article Article) error
+	ListArticlesByFeed(feedID string, limit int) ([]Article, error)
+
+	// Shutdown
+	Close() error
 }
