@@ -80,13 +80,16 @@ func main() {
 		shareInterval := time.Duration(5) * time.Second
 
 		agg := aggregator.NewAggregator(aggregatorInterval, repo)
-		share := share.NewShareVar(shareInterval)
+		share := share.NewShareVar(repo, agg)
+
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 
 		if err := agg.Start(ctx); err != nil {
 			log.Fatalf("failed to start aggregator: %v", err)
 		}
+
+		share.UpdateShare(shareInterval)
 
 		<-ctx.Done() // wait for Ctrl+C
 		if err := agg.Stop(); err != nil {

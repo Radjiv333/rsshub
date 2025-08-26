@@ -27,6 +27,8 @@ type Aggregator struct {
 	stopWorkers chan struct{}
 }
 
+var _ domain.Aggregator = (*Aggregator)(nil)
+
 func NewAggregator(defaultInterval time.Duration, repo domain.Repository) *Aggregator {
 	return &Aggregator{
 		interval:    defaultInterval,
@@ -37,8 +39,6 @@ func NewAggregator(defaultInterval time.Duration, repo domain.Repository) *Aggre
 	}
 }
 
-
-
 func (a *Aggregator) Start(ctx context.Context) error {
 	logger.Debug("'Start' function", "file", "aggregator.go")
 
@@ -48,13 +48,11 @@ func (a *Aggregator) Start(ctx context.Context) error {
 	a.ticker = time.NewTicker(a.interval)
 	a.running = true
 	a.mu.Unlock()
-	
-	
 
 	// Start the worker pool with the desired number of workers
 	for i := 0; i < a.workers; i++ {
 		a.wg.Add(1)
-		go a.worker(ctx, i)
+		go a.Worker(ctx, i)
 	}
 
 	// Ticker loop for loading and processing feeds at regular intervals
@@ -120,7 +118,7 @@ func (a *Aggregator) SetInterval(d time.Duration) {
 }
 
 // --- Worker function ---
-func (a *Aggregator) worker(ctx context.Context, id int) {
+func (a *Aggregator) Worker(ctx context.Context, id int) {
 	defer a.wg.Done()
 	for {
 		select {
@@ -190,7 +188,7 @@ func (a *Aggregator) Resize(workers int) error {
 		// Scale up: add more workers
 		for i := 0; i < diff; i++ {
 			a.wg.Add(1)
-			go a.worker(context.Background(), a.workers+i)
+			go a.Worker(context.Background(), a.workers+i)
 		}
 	} else {
 		// Scale down: stop some workers
@@ -201,4 +199,8 @@ func (a *Aggregator) Resize(workers int) error {
 
 	a.workers = workers
 	return nil
+}
+
+func (a *Aggregator) GetInterval() time.Duration {
+	return a.interval
 }

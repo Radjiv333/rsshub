@@ -14,6 +14,8 @@ type Repository interface {
 	AddArticle(article Article) error
 	ListArticlesByFeed(feedID string, limit int) ([]Article, error)
 
+	FetchInterval() (string, error)
+
 	// Shutdown
 	Close() error
 }

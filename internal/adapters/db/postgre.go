@@ -176,12 +176,12 @@ func (r *PostgresRepository) UpdateFeedTimestamp(feedID string, updatedAt time.T
 	return err
 }
 
-func (r *PostgresRepository) FetchInterval() error {
+func (r *PostgresRepository) FetchInterval() (string, error) {
 	query := `SELECT interval FROM share`
 	var interval string
 	err := r.db.QueryRow(query).Scan(&interval)
 	if err == sql.ErrNoRows {
-		return err
+		return "", err
 	}
-	return nil
+	return interval, nil
 }
