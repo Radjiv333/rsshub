@@ -175,3 +175,13 @@ func (r *PostgresRepository) UpdateFeedTimestamp(feedID string, updatedAt time.T
 	`, updatedAt, feedID)
 	return err
 }
+
+func (r *PostgresRepository) FetchInterval() error {
+	query := `SELECT interval FROM share`
+	var interval string
+	err := r.db.QueryRow(query).Scan(&interval)
+	if err == sql.ErrNoRows {
+		return err
+	}
+	return nil
+}

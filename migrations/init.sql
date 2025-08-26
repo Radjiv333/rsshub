@@ -18,3 +18,7 @@ CREATE TABLE IF NOT EXISTS articles (
     published_at TIMESTAMP,
     feed_id UUID REFERENCES feeds(id) ON DELETE CASCADE
 );
+
+CREATE TABLE share (
+    interval TEXT NOT NULL
+);

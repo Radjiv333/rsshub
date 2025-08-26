@@ -37,6 +37,8 @@ func NewAggregator(defaultInterval time.Duration, repo domain.Repository) *Aggre
 	}
 }
 
+
+
 func (a *Aggregator) Start(ctx context.Context) error {
 	logger.Debug("'Start' function", "file", "aggregator.go")
 
@@ -46,6 +48,8 @@ func (a *Aggregator) Start(ctx context.Context) error {
 	a.ticker = time.NewTicker(a.interval)
 	a.running = true
 	a.mu.Unlock()
+	
+	
 
 	// Start the worker pool with the desired number of workers
 	for i := 0; i < a.workers; i++ {

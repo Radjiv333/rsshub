@@ -1,2 +1,4 @@
 1. Add README.md
 2. Add config file
+3. Add config for this line:
+shareInterval := time.Duration(5) * time.Second

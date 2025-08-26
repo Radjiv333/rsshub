@@ -15,6 +15,7 @@ import (
 	"RSSHub/internal/adapters/rss"
 	"RSSHub/internal/aggregator"
 	"RSSHub/internal/domain"
+	"RSSHub/internal/share"
 	"RSSHub/pkg/config"
 	"RSSHub/pkg/lock"
 	"RSSHub/pkg/logger"
@@ -66,19 +67,20 @@ func main() {
 
 	switch os.Args[1] {
 	case "fetch":
-		
+
 		if err := lock.Acquire(); err != nil {
 			log.Fatalf("cannot start fetch: %v", err)
 		}
 		defer lock.Release()
-		
-		interval, err := GetInterval()
+
+		aggregatorInterval, err := GetInterval()
 		if err != nil {
 			log.Fatalf("failed to fetch interval value from env file: %v", err)
 		}
+		shareInterval := time.Duration(5) * time.Second
 
-		agg := aggregator.NewAggregator(interval, repo)
-
+		agg := aggregator.NewAggregator(aggregatorInterval, repo)
+		share := share.NewShareVar(shareInterval)
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 
