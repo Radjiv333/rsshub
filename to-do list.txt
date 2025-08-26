@@ -1,1 +1,2 @@
 1. Add README.md
+2. Add config file
