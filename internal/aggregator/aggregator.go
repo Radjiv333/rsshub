@@ -8,6 +8,8 @@ import (
 
 	"RSSHub/internal/adapters/rss"
 	"RSSHub/internal/domain"
+	"RSSHub/pkg/lock"
+	"RSSHub/pkg/logger"
 )
 
 type Aggregator struct {
@@ -36,11 +38,9 @@ func NewAggregator(defaultInterval time.Duration, repo domain.Repository) *Aggre
 }
 
 func (a *Aggregator) Start(ctx context.Context) error {
+	logger.Debug("'Start' function", "file", "aggregator.go")
+
 	a.mu.Lock()
-	if a.running {
-		a.mu.Unlock()
-		return fmt.Errorf("aggregator already running")
-	}
 	ctx, cancel := context.WithCancel(ctx)
 	a.cancel = cancel
 	a.ticker = time.NewTicker(a.interval)
@@ -83,6 +83,7 @@ func (a *Aggregator) Start(ctx context.Context) error {
 }
 
 func (a *Aggregator) Stop() error {
+	lock.Release()
 	a.mu.Lock()
 	if !a.running {
 		a.mu.Unlock()

@@ -2,6 +2,9 @@ PROJECT_NAME=rsshub
 
 DC=docker-compose
 
+fetch:
+	@export $$(grep -v '^#' .env | xargs) && ./rsshub fetch
+
 build:
 	@echo "Building the project..."
 	go build -o $(PROJECT_NAME) ./cmd/main.go
