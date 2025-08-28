@@ -208,8 +208,8 @@ func (r *PostgresRepository) FetchInterval() (string, error) {
 }
 
 func (r *PostgresRepository) SetInterval(interval string) error {
-	query := `UPDATE share SET interval = $1 `
-	_, err := r.db.Exec(query, interval)
+	query := `UPDATE share SET interval = $1 WHERE id = $2`
+	_, err := r.db.Exec(query, interval, 1)
 	return err
 }
 func (r *PostgresRepository) SetDefaultCLIInterval(interval string) error {
