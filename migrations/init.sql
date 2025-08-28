@@ -20,5 +20,7 @@ CREATE TABLE IF NOT EXISTS articles (
 );
 
 CREATE TABLE share (
+    id SERIAL PRIMARY KEY,
     interval TEXT NOT NULL
 );
+

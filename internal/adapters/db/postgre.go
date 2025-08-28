@@ -41,7 +41,6 @@ func (r *PostgresRepository) Close() error {
 
 // -------------------------------------------------------------Feeds--------------------------------------------------------------------
 
-// AddFeed inserts a new feed
 func (r *PostgresRepository) AddFeed(feed domain.Feed) error {
 	query := `
 		INSERT INTO feeds (name, url, created_at, updated_at)
@@ -59,14 +58,13 @@ func (r *PostgresRepository) ListFeedByName(feedName string) (domain.Feed, error
 		FROM feeds
 		WHERE name = $1
 	`
-	err := r.db.QueryRow(query).Scan(feedName, &feed.ID, &feed.Name, &feed.URL, &feed.CreatedAt, &feed.UpdatedAt)
+	err := r.db.QueryRow(query, feedName).Scan(&feed.ID, &feed.Name, &feed.URL, &feed.CreatedAt, &feed.UpdatedAt)
 	if err != nil {
 		return domain.Feed{}, err
 	}
 	return feed, nil
 }
 
-// ListFeeds returns the N most recently added feeds
 func (r *PostgresRepository) ListFeeds(limit int) ([]domain.Feed, error) {
 	var rows *sql.Rows
 	var err error
@@ -207,4 +205,15 @@ func (r *PostgresRepository) FetchInterval() (string, error) {
 		return "", err
 	}
 	return interval, nil
+}
+
+func (r *PostgresRepository) SetInterval(interval string) error {
+	query := `UPDATE share SET interval = $1 `
+	_, err := r.db.Exec(query, interval)
+	return err
+}
+func (r *PostgresRepository) SetDefaultCLIInterval(interval string) error {
+	query := `INSERT INTO share (interval) VALUES ($1)`
+	_, err := r.db.Exec(query, interval)
+	return err
 }

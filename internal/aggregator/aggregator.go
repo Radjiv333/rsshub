@@ -59,7 +59,7 @@ func (a *Aggregator) Start(ctx context.Context) error {
 	a.wg.Add(1)
 	go func() {
 		defer a.wg.Done()
-		
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -85,20 +85,15 @@ func (a *Aggregator) Start(ctx context.Context) error {
 	return nil
 }
 
-func (a *Aggregator) Stop() error {
+func (a *Aggregator) Stop() {
 	lock.Release()
 	a.mu.Lock()
-	if !a.running {
-		a.mu.Unlock()
-		return fmt.Errorf("aggregator not running")
-	}
 	a.cancel()
 	a.ticker.Stop()
 	a.mu.Unlock()
 
 	a.wg.Wait()
 	a.running = false
-	return nil
 }
 
 func (a *Aggregator) SetInterval(d time.Duration) {

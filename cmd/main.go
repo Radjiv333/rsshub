@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"RSSHub/internal/adapters/db"
-	"RSSHub/internal/adapters/rss"
 	"RSSHub/internal/aggregator"
 	"RSSHub/internal/domain"
 	"RSSHub/internal/share"
@@ -22,9 +21,6 @@ import (
 
 func GetAndParseDBInterval() (time.Duration, error) {
 	envInterval := config.GetEnvDBInterval()
-	if len(envInterval) < 2 {
-		return 0, fmt.Errorf("env value for interval is invalid!")
-	}
 
 	interval, err := share.ParseInterval(envInterval)
 	if err != nil {
@@ -36,7 +32,7 @@ func GetAndParseDBInterval() (time.Duration, error) {
 func GetAndParseInterval() (time.Duration, error) {
 	envInterval := config.GetEnvInterval()
 	if len(envInterval) < 2 {
-		return 0, fmt.Errorf("env value for interval is invalid!")
+		return 0, fmt.Errorf("env value for cli_interval is invalid!")
 	}
 
 	interval, err := share.ParseInterval(envInterval)
@@ -48,6 +44,7 @@ func GetAndParseInterval() (time.Duration, error) {
 
 func main() {
 	logger.Init()
+	var agg *aggregator.Aggregator
 
 	// Establishing DB connection
 	repo, err := db.NewPostgresRepository()
@@ -74,21 +71,12 @@ func main() {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 
-		// Introducing intervals
+		// Introducing aggregator
 		aggregatorInterval, err := GetAndParseInterval()
 		if err != nil {
-			stop()
 			log.Fatalf("failed to fetch interval value from env file: %v", err)
 		}
-		shareInterval, err := GetAndParseDBInterval()
-		if err != nil {
-			stop()
-			log.Fatalf("failed to fetch DB interval value from env file: %v", err)
-		}
-
-		// Introducing global variables
-		agg := aggregator.NewAggregator(aggregatorInterval, repo)
-		share := share.NewShareVar(repo, agg)
+		agg = aggregator.NewAggregator(aggregatorInterval, repo)
 
 		// Starting feed fetch
 		if err := agg.Start(ctx); err != nil {
@@ -96,35 +84,37 @@ func main() {
 			log.Fatalf("failed to start aggregator: %v", err)
 		}
 
-		// Need to get rid of this error management-----------------------------------------------------------------------------------
-		// Update the current feed fetch interval
-		if err := share.UpdateShare(shareInterval); err != nil {
-			stop()
-			log.Fatalf("failed to share the interval: %v", err)
+		// Introducing Sharegator
+		dbInterval, err := GetAndParseDBInterval()
+		if err != nil {
+			log.Fatalf("failed to fetch DB interval value from env file: %v", err)
 		}
+		share := share.NewShareVar(repo, agg)
+
+		// Update the current feed fetch interval
+		share.UpdateShare(dbInterval, ctx)
 
 		// Waiting for Ctrl+C
 		<-ctx.Done()
-		if err := agg.Stop(); err != nil {
-			logger.Error("aggregator stopped with error", "error", err)
-		} else {
-			logger.Info("Aggregator stopped cleanly")
-		}
+		agg.Stop()
+		logger.Info("Aggregator stopped cleanly")
+		share.Stop()
+		logger.Info("Sharegator stopped cleanly")
 
 	case "add":
 		addCmd := flag.NewFlagSet("add", flag.ExitOnError)
-		name := addCmd.String("name", "", "Feed name")
-		url := addCmd.String("url", "", "Feed URL")
+		feedName := addCmd.String("name", "", "Feed name")
+		feedURL := addCmd.String("url", "", "Feed URL")
 		addCmd.Parse(os.Args[2:])
 
-		if *name == "" || *url == "" {
+		if *feedName == "" || *feedURL == "" {
 			fmt.Println("Usage: rsshub add --name <feed-name> --url <feed-url>")
 			os.Exit(1)
 		}
 
 		feed := domain.Feed{
-			Name:      *name,
-			URL:       *url,
+			Name:      *feedName,
+			URL:       *feedURL,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
@@ -135,14 +125,14 @@ func main() {
 			log.Fatalf("failed to insert feed: %v", err)
 		}
 
-		fmt.Printf("Feed '%s' added successfully!\n", *name)
+		fmt.Printf("Feed '%s' added successfully!\n", *feedName)
 
 	case "list":
 		listCmd := flag.NewFlagSet("list", flag.ExitOnError)
-		num := listCmd.Int("num", 0, "Number of feeds to display (default: all)")
+		feedNum := listCmd.Int("num", 0, "Number of feeds to display (default: all)")
 		listCmd.Parse(os.Args[2:])
 
-		feeds, err := repo.ListFeeds(*num)
+		feeds, err := repo.ListFeeds(*feedNum)
 		if err != nil {
 			log.Fatalf("failed to list feeds: %v", err)
 		}
@@ -156,20 +146,20 @@ func main() {
 
 	case "delete":
 		deleteCmd := flag.NewFlagSet("delete", flag.ExitOnError)
-		name := deleteCmd.String("name", "", "Feed name to delete")
+		feedName := deleteCmd.String("name", "", "Feed name to delete")
 		deleteCmd.Parse(os.Args[2:])
 
-		if *name == "" {
+		if *feedName == "" {
 			fmt.Println("Usage: rsshub delete --name <feed-name>")
 			os.Exit(1)
 		}
 
-		err := repo.DeleteFeed(*name)
+		err := repo.DeleteFeed(*feedName)
 		if err != nil {
 			log.Fatalf("failed to delete feed: %v", err)
 		}
 
-		fmt.Printf("Feed '%s' deleted successfully\n", *name)
+		fmt.Printf("Feed '%s' deleted successfully\n", *feedName)
 
 	case "articles":
 		articlesCmd := flag.NewFlagSet("articles", flag.ExitOnError)
@@ -181,18 +171,12 @@ func main() {
 			fmt.Println("Usage: rsshub articles --feed-name <name> [--num N]")
 			os.Exit(1)
 		}
-		
-		feeds, _ := repo.ListFeeds(100)
-		var feed domain.Feed
-		found := false
-		for _, f := range feeds {
-			if f.Name == *feedName {
-				feed = f
-				found = true
-				break
-			}
+
+		feed, err := repo.ListFeedByName(*feedName)
+		if err != nil {
+			log.Fatalf("failed to get feed by name: %v", err)
 		}
-		if !found {
+		if feed.Name == "" {
 			log.Fatalf("feed '%s' not found", *feedName)
 		}
 
@@ -211,82 +195,25 @@ func main() {
 			)
 		}
 
-	case "fetch-once":
-		fetchCmd := flag.NewFlagSet("fetch-once", flag.ExitOnError)
-		feedName := fetchCmd.String("feed-name", "", "Feed name to fetch")
-		fetchCmd.Parse(os.Args[2:])
+	case "set-interval":
+		intervalCmd := flag.NewFlagSet("set-interval", flag.ExitOnError)
+		duration := intervalCmd.String("duration", "", "New interval for fetching feeds")
+		intervalCmd.Parse(os.Args[2:])
 
-		if *feedName == "" {
-			fmt.Println("Usage: rsshub fetch-once --feed-name <name>")
-			os.Exit(1)
+		if *duration == "" {
+			log.Fatal("Usage: rsshub set-interval --duration <duration>")
 		}
 
-		feeds, _ := repo.ListFeeds(50)
-		var feed domain.Feed
-		found := false
-		for _, f := range feeds {
-			if f.Name == *feedName {
-				feed = f
-				found = true
-				break
-			}
-		}
-		if !found {
-			log.Fatalf("feed '%s' not found", *feedName)
-		}
-
-		parsed, err := rss.FetchAndParse(feed.URL)
+		_, err := share.ParseInterval(*duration)
 		if err != nil {
-			log.Fatalf("failed to fetch RSS: %v", err)
+			log.Fatalf("invalid duration: %v\n", err)
 		}
 
-		fmt.Println("Feed:", parsed.Channel.Title)
-
-		for _, item := range parsed.Channel.Items {
-			article := domain.Article{
-				FeedID:      feed.ID,
-				Title:       item.Title,
-				Link:        item.Link,
-				Description: item.Description,
-				CreatedAt:   time.Now(),
-				UpdatedAt:   time.Now(),
-			}
-
-			parsedTime, err := time.Parse(time.RubyDate, item.PubDate)
-			if err == nil {
-				article.PublishedAt = parsedTime
-			} else {
-				// fallback: use now if parsing fails
-				article.PublishedAt = time.Now()
-			}
-
-			err = repo.AddArticle(article)
-			if err != nil {
-				log.Printf("skipping article '%s': %v\n", article.Title, err)
-			} else {
-				fmt.Printf("saved: %s\n", article.Title)
-			}
+		// Set the new interval
+		err = repo.SetInterval(*duration)
+		if err != nil {
+			log.Fatalf("error updating interval in db: %v", err)
 		}
-
-	// case "set-interval":
-	// 	intervalCmd := flag.NewFlagSet("set-interval", flag.ExitOnError)
-	// 	interval := intervalCmd.String("interval", "", "New interval for fetching feeds")
-	// 	intervalCmd.Parse(os.Args[2:])
-
-	// 	if *interval == "" {
-	// 		fmt.Println("Usage: rsshub set-interval --interval <duration>")
-	// 		os.Exit(1)
-	// 	}
-
-	// 	// Convert interval string to duration
-	// 	d, err := time.ParseDuration(*interval)
-	// 	if err != nil {
-	// 		fmt.Printf("Invalid duration: %v\n", err)
-	// 		os.Exit(1)
-	// 	}
-
-	// 	// Set the new interval
-	// 	agg.SetInterval(d)
 
 	// case "set-workers":
 	// 	workersCmd := flag.NewFlagSet("set-workers", flag.ExitOnError)
