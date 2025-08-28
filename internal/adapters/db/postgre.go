@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"RSSHub/internal/domain"
+	"RSSHub/pkg/logger"
 
 	_ "github.com/lib/pq"
 )
@@ -28,6 +29,8 @@ func NewPostgresRepository() (*PostgresRepository, error) {
 		return nil, fmt.Errorf("failed to ping db: %w", err)
 	}
 
+	logger.Debug("Succefully connected to Database!")
+
 	return &PostgresRepository{db: db}, nil
 }
 
@@ -35,6 +38,8 @@ func NewPostgresRepository() (*PostgresRepository, error) {
 func (r *PostgresRepository) Close() error {
 	return r.db.Close()
 }
+
+// -------------------------------------------------------------Feeds--------------------------------------------------------------------
 
 // AddFeed inserts a new feed
 func (r *PostgresRepository) AddFeed(feed domain.Feed) error {
@@ -45,6 +50,20 @@ func (r *PostgresRepository) AddFeed(feed domain.Feed) error {
 	`
 	_, err := r.db.Exec(query, feed.Name, feed.URL, feed.CreatedAt, feed.UpdatedAt)
 	return err
+}
+
+func (r *PostgresRepository) ListFeedByName(feedName string) (domain.Feed, error) {
+	feed := domain.Feed{}
+	query := `
+		SELECT id, name, url, created_at, updated_at
+		FROM feeds
+		WHERE name = $1
+	`
+	err := r.db.QueryRow(query).Scan(feedName, &feed.ID, &feed.Name, &feed.URL, &feed.CreatedAt, &feed.UpdatedAt)
+	if err != nil {
+		return domain.Feed{}, err
+	}
+	return feed, nil
 }
 
 // ListFeeds returns the N most recently added feeds
@@ -82,11 +101,22 @@ func (r *PostgresRepository) ListFeeds(limit int) ([]domain.Feed, error) {
 	return feeds, nil
 }
 
+func (r *PostgresRepository) UpdateFeedTimestamp(feedID string, updatedAt time.Time) error {
+	_, err := r.db.Exec(`
+		UPDATE feeds 
+		SET updated_at = $1 
+		WHERE id = $2
+	`, updatedAt, feedID)
+	return err
+}
+
 func (r *PostgresRepository) DeleteFeed(name string) error {
 	query := `DELETE FROM feeds WHERE name = $1;`
 	_, err := r.db.Exec(query, name)
 	return err
 }
+
+// -------------------------------------------------------------Articles--------------------------------------------------------------------
 
 // AddArticle inserts a new article (ignores duplicates by link)
 func (r *PostgresRepository) AddArticle(article domain.Article) error {
@@ -167,14 +197,7 @@ func (r *PostgresRepository) ListArticlesByFeed(feedID string, limit int) ([]dom
 	return articles, nil
 }
 
-func (r *PostgresRepository) UpdateFeedTimestamp(feedID string, updatedAt time.Time) error {
-	_, err := r.db.Exec(`
-		UPDATE feeds 
-		SET updated_at = $1 
-		WHERE id = $2
-	`, updatedAt, feedID)
-	return err
-}
+// -------------------------------------------------------------Share--------------------------------------------------------------------
 
 func (r *PostgresRepository) FetchInterval() (string, error) {
 	query := `SELECT interval FROM share`

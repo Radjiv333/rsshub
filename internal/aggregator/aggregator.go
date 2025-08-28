@@ -59,6 +59,7 @@ func (a *Aggregator) Start(ctx context.Context) error {
 	a.wg.Add(1)
 	go func() {
 		defer a.wg.Done()
+		
 		for {
 			select {
 			case <-ctx.Done():
@@ -70,9 +71,9 @@ func (a *Aggregator) Start(ctx context.Context) error {
 					fmt.Printf("error loading feeds: %v\n", err)
 					continue
 				}
-				for _, f := range feeds {
+				for _, feed := range feeds {
 					select {
-					case a.jobs <- f:
+					case a.jobs <- feed:
 					case <-ctx.Done():
 						return
 					}
@@ -201,6 +202,10 @@ func (a *Aggregator) Resize(workers int) error {
 	return nil
 }
 
-func (a *Aggregator) GetInterval() time.Duration {
+func (a *Aggregator) GetCurrentInterval() time.Duration {
 	return a.interval
+}
+
+func (a *Aggregator) UpdateCurrentInterval(interval time.Duration) {
+	a.interval = interval
 }

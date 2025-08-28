@@ -10,5 +10,6 @@ type Aggregator interface {
 	Stop() error
 	Worker(ctx context.Context, id int)
 	Resize(workers int) error
-	GetInterval() time.Duration
+	GetCurrentInterval() time.Duration
+	UpdateCurrentInterval(interval time.Duration)
 }
