@@ -76,9 +76,9 @@ func main() {
 		// Waiting for Ctrl+C
 		<-ctx.Done()
 		agg.Stop()
-		logger.Info("Aggregator stopped cleanly")
+		logger.Debug("Aggregator stopped cleanly")
 		share.Stop()
-		logger.Info("Sharegator stopped cleanly")
+		logger.Debug("Sharegator stopped cleanly")
 
 	case "add":
 		addCmd := flag.NewFlagSet("add", flag.ExitOnError)

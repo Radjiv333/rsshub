@@ -3,7 +3,7 @@ PROJECT_NAME=rsshub
 DC=docker-compose
 
 fetch:
-	@export $$(grep -v '^#' .env | xargs) && ./rsshub fetch
+	@export $$(grep -v '^#' .env | xargs) && ./rsshub fetch --race
 
 build:
 	@echo "Building the project..."

@@ -59,7 +59,11 @@ func (a *Aggregator) Start(ctx context.Context) error {
 		defer a.wg.Done()
 
 		for {
+			if a.ticker == nil {
+				fmt.Println("hsdfl")
+			}
 			select {
+
 			case <-ctx.Done():
 				return
 			case <-a.ticker.C:
@@ -204,6 +208,9 @@ func (a *Aggregator) SetCurrentInterval(interval time.Duration) {
 }
 
 func (a *Aggregator) RestartTicker() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	
 	if a.ticker != nil {
 		a.ticker.Stop()
 	}

@@ -33,7 +33,6 @@ func (share *ShareVariables) UpdateShare(dbInterval time.Duration, ctx context.C
 				dbInterval, err := share.repo.FetchCliInterval()
 				if err != sql.ErrNoRows {
 					logger.Debug("Getting interval from db", "interval", dbInterval)
-					continue
 				}
 
 				interval, err := utils.ParseIntervalToDuration(dbInterval)
@@ -41,6 +40,7 @@ func (share *ShareVariables) UpdateShare(dbInterval time.Duration, ctx context.C
 					logger.Error("error parsing interval that came from db", "error", err, "interval", interval)
 					continue
 				}
+
 				if share.agg.GetCurrentInterval() != interval {
 					share.agg.SetCurrentInterval(interval)
 					share.agg.RestartTicker()
