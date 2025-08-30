@@ -40,8 +40,6 @@ func NewAggregator(defaultInterval time.Duration, repo domain.Repository) *Aggre
 }
 
 func (a *Aggregator) Start(ctx context.Context) error {
-	logger.Debug("'Start' function", "file", "aggregator.go")
-
 	a.mu.Lock()
 	ctx, cancel := context.WithCancel(ctx)
 	a.cancel = cancel
@@ -201,6 +199,15 @@ func (a *Aggregator) GetCurrentInterval() time.Duration {
 	return a.interval
 }
 
-func (a *Aggregator) UpdateCurrentInterval(interval time.Duration) {
+func (a *Aggregator) SetCurrentInterval(interval time.Duration) {
 	a.interval = interval
+}
+
+func (a *Aggregator) RestartTicker() {
+	if a.ticker != nil {
+		a.ticker.Stop()
+	}
+
+	a.ticker = time.NewTicker(a.interval)
+	logger.Debug("The ticker has restarted with new interval", "interval", a.interval)
 }

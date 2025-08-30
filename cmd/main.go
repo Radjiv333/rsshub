@@ -13,34 +13,11 @@ import (
 	"RSSHub/internal/adapters/db"
 	"RSSHub/internal/aggregator"
 	"RSSHub/internal/domain"
+	"RSSHub/internal/domain/utils"
 	"RSSHub/internal/share"
-	"RSSHub/pkg/config"
 	"RSSHub/pkg/lock"
 	"RSSHub/pkg/logger"
 )
-
-func GetAndParseDBInterval() (time.Duration, error) {
-	envInterval := config.GetEnvDBInterval()
-
-	interval, err := share.ParseInterval(envInterval)
-	if err != nil {
-		return 0, err
-	}
-	return interval, nil
-}
-
-func GetAndParseInterval() (time.Duration, error) {
-	envInterval := config.GetEnvInterval()
-	if len(envInterval) < 2 {
-		return 0, fmt.Errorf("env value for cli_interval is invalid!")
-	}
-
-	interval, err := share.ParseInterval(envInterval)
-	if err != nil {
-		return 0, err
-	}
-	return interval, nil
-}
 
 func main() {
 	logger.Init()
@@ -72,7 +49,7 @@ func main() {
 		defer stop()
 
 		// Introducing aggregator
-		aggregatorInterval, err := GetAndParseInterval()
+		aggregatorInterval, err := utils.GetAndParseInterval()
 		if err != nil {
 			log.Fatalf("failed to fetch interval value from env file: %v", err)
 		}
@@ -85,7 +62,7 @@ func main() {
 		}
 
 		// Introducing Sharegator
-		dbInterval, err := GetAndParseDBInterval()
+		dbInterval, err := utils.GetAndParseDBInterval()
 		if err != nil {
 			log.Fatalf("failed to fetch DB interval value from env file: %v", err)
 		}
@@ -204,7 +181,7 @@ func main() {
 			log.Fatal("Usage: rsshub set-interval --duration <duration>")
 		}
 
-		_, err := share.ParseInterval(*duration)
+		_, err := utils.ParseInterval(*duration)
 		if err != nil {
 			log.Fatalf("invalid duration: %v\n", err)
 		}

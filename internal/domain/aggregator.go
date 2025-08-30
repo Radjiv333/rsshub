@@ -11,5 +11,6 @@ type Aggregator interface {
 	Worker(ctx context.Context, id int)
 	Resize(workers int) error
 	GetCurrentInterval() time.Duration
-	UpdateCurrentInterval(interval time.Duration)
+	SetCurrentInterval(interval time.Duration)
+	RestartTicker()
 }
