@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -8,7 +9,7 @@ import (
 	"RSSHub/pkg/config"
 )
 
-func ParseInterval(intervalStr string) (time.Duration, error) {
+func ParseIntervalToDuration(intervalStr string) (time.Duration, error) {
 	if len(intervalStr) < 2 {
 		return 0, fmt.Errorf("env value for db_interval is invalid!")
 	}
@@ -38,7 +39,7 @@ func ParseInterval(intervalStr string) (time.Duration, error) {
 func GetAndParseDBInterval() (time.Duration, error) {
 	envInterval := config.GetEnvDBInterval()
 
-	interval, err := ParseInterval(envInterval)
+	interval, err := ParseIntervalToDuration(envInterval)
 	if err != nil {
 		return 0, err
 	}
@@ -51,9 +52,34 @@ func GetAndParseInterval() (time.Duration, error) {
 		return 0, fmt.Errorf("env value for cli_interval is invalid!")
 	}
 
-	interval, err := ParseInterval(envInterval)
+	interval, err := ParseIntervalToDuration(envInterval)
 	if err != nil {
 		return 0, err
 	}
 	return interval, nil
+}
+
+func ParseDurationToInterval(duration time.Duration) (string, error) {
+	if duration <= 0 {
+		return "", errors.New("duration must be greater than zero")
+	}
+
+	// Extract the number of seconds, minutes, hours, etc.
+	if duration%time.Hour == 0 {
+		// Duration is in hours
+		hours := int(duration / time.Hour)
+		return fmt.Sprintf("%dh", hours), nil
+	} else if duration%time.Minute == 0 {
+		// Duration is in minutes
+		minutes := int(duration / time.Minute)
+		return fmt.Sprintf("%dm", minutes), nil
+	} else if duration%time.Second == 0 {
+		// Duration is in seconds
+		seconds := int(duration / time.Second)
+		return fmt.Sprintf("%ds", seconds), nil
+	} else {
+		// Default fallback, returning in seconds if not perfectly divisible
+		seconds := int(duration / time.Second)
+		return fmt.Sprintf("%ds", seconds), nil
+	} 
 }

@@ -13,6 +13,10 @@ up:
 	@echo "Starting $(PROJECT_NAME)..."
 	$(DC) up --build
 
+upd:
+	@echo "Starting $(PROJECT_NAME)..."
+	$(DC) up --build -d
+
 down:
 	@echo "Stopping $(PROJECT_NAME)..."
 	$(DC) down

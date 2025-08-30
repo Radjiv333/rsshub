@@ -51,6 +51,7 @@ func main() {
 		// Introducing aggregator
 		aggregatorInterval, err := utils.GetAndParseInterval()
 		if err != nil {
+			stop()
 			log.Fatalf("failed to fetch interval value from env file: %v", err)
 		}
 		agg = aggregator.NewAggregator(aggregatorInterval, repo)
@@ -64,6 +65,7 @@ func main() {
 		// Introducing Sharegator
 		dbInterval, err := utils.GetAndParseDBInterval()
 		if err != nil {
+			stop()
 			log.Fatalf("failed to fetch DB interval value from env file: %v", err)
 		}
 		share := share.NewShareVar(repo, agg)
@@ -181,7 +183,7 @@ func main() {
 			log.Fatal("Usage: rsshub set-interval --duration <duration>")
 		}
 
-		_, err := utils.ParseInterval(*duration)
+		_, err := utils.ParseIntervalToDuration(*duration)
 		if err != nil {
 			log.Fatalf("invalid duration: %v\n", err)
 		}

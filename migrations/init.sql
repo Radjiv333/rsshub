@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS articles (
     feed_id UUID REFERENCES feeds(id) ON DELETE CASCADE
 );
 
-CREATE TABLE share (
-    id SERIAL PRIMARY KEY,
-    interval INTERVAL NOT NULL
+CREATE TABLE IF NOT EXISTS share (
+    id SERIAL PRIMARY KEY CHECK (id = 1),
+    interval TEXT NOT NULL
 );
 

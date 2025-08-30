@@ -197,7 +197,7 @@ func (r *PostgresRepository) ListArticlesByFeed(feedID string, limit int) ([]dom
 
 // -------------------------------------------------------------Share--------------------------------------------------------------------
 
-func (r *PostgresRepository) FetchInterval() (string, error) {
+func (r *PostgresRepository) FetchCliInterval() (string, error) {
 	query := `SELECT interval FROM share`
 	var interval string
 	err := r.db.QueryRow(query).Scan(&interval)
@@ -212,8 +212,14 @@ func (r *PostgresRepository) SetInterval(interval string) error {
 	_, err := r.db.Exec(query, interval, 1)
 	return err
 }
-func (r *PostgresRepository) SetDefaultCLIInterval(interval string) error {
-	query := `INSERT INTO share (interval) VALUES ($1)`
+
+func (r *PostgresRepository) SetDefaultCliInterval(interval string) error {
+	query := `
+		INSERT INTO share (id, interval)
+		VALUES (1, $1)
+		ON CONFLICT (id)
+		DO UPDATE SET interval = EXCLUDED.interval;
+	`
 	_, err := r.db.Exec(query, interval)
 	return err
 }

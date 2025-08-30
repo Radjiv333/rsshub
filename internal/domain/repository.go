@@ -15,9 +15,9 @@ type Repository interface {
 	ListArticlesByFeed(feedID string, limit int) ([]Article, error)
 
 	// Share
-	FetchInterval() (string, error)
+	FetchCliInterval() (string, error)
 	SetInterval(interval string) error
-	SetDefaultCLIInterval(interval string) error
+	SetDefaultCliInterval(interval string) error
 
 	// Shutdown
 	Close() error

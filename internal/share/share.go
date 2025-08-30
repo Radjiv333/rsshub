@@ -23,19 +23,20 @@ func NewShareVar(repo domain.Repository, agg domain.Aggregator) *ShareVariables 
 
 func (share *ShareVariables) UpdateShare(dbInterval time.Duration, ctx context.Context) {
 	share.ticker = time.NewTicker(dbInterval)
-	share.repo.SetDefaultCLIInterval(config.GetEnvInterval())
+	share.repo.SetDefaultCliInterval(config.GetEnvInterval())
+
 	go func() {
 		for {
 			select {
 			case <-share.ticker.C:
 				// Getting interval value from db
-				dbInterval, err := share.repo.FetchInterval()
+				dbInterval, err := share.repo.FetchCliInterval()
 				if err != sql.ErrNoRows {
 					logger.Debug("Getting interval from db", "interval", dbInterval)
 					continue
 				}
 
-				interval, err := utils.ParseInterval(dbInterval)
+				interval, err := utils.ParseIntervalToDuration(dbInterval)
 				if err != nil {
 					logger.Error("error parsing interval that came from db", "error", err, "interval", interval)
 					continue
