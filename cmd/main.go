@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/xml"
 	"flag"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -99,6 +102,34 @@ func main() {
 			os.Exit(1)
 		}
 
+		resp, err := http.Get(*feedURL)
+		if err != nil {
+			fmt.Printf("Could not access the site through url: %s\n", *feedURL)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			fmt.Printf("Got an unexpected code from url: %d\n", resp.StatusCode)
+			os.Exit(1)
+		}
+
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("Could not read the RSS body :(\n")
+			os.Exit(1)
+		}
+
+		var testFeed domain.Feed
+		if err := xml.Unmarshal(data, &testFeed); err != nil {
+			fmt.Printf("Could not parse the RSS body :(\n")
+			os.Exit(1)
+		}
+		if testFeed.Name == "" {
+			fmt.Printf("Our struct does not work with this site!\n")
+			os.Exit(1)
+		}
+
 		feed := domain.Feed{
 			Name:      *feedName,
 			URL:       *feedURL,
@@ -107,7 +138,7 @@ func main() {
 		}
 
 		logger.Debug("Adding feed to the DB...", "feed", feed)
-		err := repo.AddFeed(feed)
+		err = repo.AddFeed(feed)
 		if err != nil {
 			log.Fatalf("failed to insert feed: %v", err)
 		}
