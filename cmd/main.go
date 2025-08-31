@@ -1,6 +1,12 @@
 package main
 
 import (
+	"RSSHub/internal/adapters/api"
+	"RSSHub/internal/adapters/db"
+	"RSSHub/internal/domain"
+	"RSSHub/internal/domain/utils"
+	"RSSHub/pkg/lock"
+	"RSSHub/pkg/logger"
 	"context"
 	"encoding/xml"
 	"flag"
@@ -13,15 +19,6 @@ import (
 	"strconv"
 	"syscall"
 	"time"
-
-	"RSSHub/internal/adapters/api"
-	"RSSHub/internal/adapters/db"
-
-	"RSSHub/internal/domain"
-	"RSSHub/internal/domain/utils"
-
-	"RSSHub/pkg/lock"
-	"RSSHub/pkg/logger"
 )
 
 func main() {
@@ -34,6 +31,11 @@ func main() {
 		log.Fatalf("DB connect failed: %v", err)
 	}
 	defer repo.Close()
+
+	if len(os.Args) >= 2 && (os.Args[1] == "--help" || os.Args[1] == "-h" || os.Args[1] == "help" || os.Args[1] == "-help") {
+		utils.PrintHelp()
+		os.Exit(0)
+	}
 
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: rsshub COMMAND [OPTIONS]")
@@ -259,8 +261,8 @@ func main() {
 		}
 
 		workersNum, err := strconv.Atoi(os.Args[2]) // Convert the argument to an integer
-		if err != nil || workersNum <= 0 {
-			fmt.Println("Usage: rsshub set-workers <number> (number should be greater than 0)")
+		if err != nil || workersNum <= 0 || workersNum >= 100 {
+			fmt.Println("Usage: rsshub set-workers <number> (number should be greater than 0 or less than or equal to 100)")
 			os.Exit(1)
 		}
 

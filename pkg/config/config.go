@@ -1,9 +1,8 @@
 package config
 
 import (
-	"os"
-
 	"RSSHub/pkg/logger"
+	"os"
 )
 
 func GetEnvInterval() string {

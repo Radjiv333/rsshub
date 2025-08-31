@@ -1,12 +1,11 @@
 package db
 
 import (
+	"RSSHub/internal/domain"
+	"RSSHub/pkg/logger"
 	"database/sql"
 	"fmt"
 	"time"
-
-	"RSSHub/internal/domain"
-	"RSSHub/pkg/logger"
 
 	_ "github.com/lib/pq"
 )

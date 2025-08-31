@@ -1,15 +1,14 @@
 package api
 
 import (
-	"context"
-	"fmt"
-	"sync"
-	"time"
-
 	"RSSHub/internal/adapters/rss"
 	"RSSHub/internal/domain"
 	"RSSHub/pkg/lock"
 	"RSSHub/pkg/logger"
+	"context"
+	"fmt"
+	"sync"
+	"time"
 )
 
 type Aggregator struct {
@@ -173,7 +172,6 @@ func (a *Aggregator) Worker(ctx context.Context, id int) {
 		}
 	}
 }
-
 
 func (a *Aggregator) GetCurrentInterval() time.Duration {
 	return a.interval

@@ -1,12 +1,11 @@
 package utils
 
 import (
+	"RSSHub/pkg/config"
 	"errors"
 	"fmt"
 	"strconv"
 	"time"
-
-	"RSSHub/pkg/config"
 )
 
 func ParseIntervalToDuration(intervalStr string) (time.Duration, error) {
@@ -20,6 +19,10 @@ func ParseIntervalToDuration(intervalStr string) (time.Duration, error) {
 	interval, err := strconv.Atoi(value)
 	if err != nil {
 		return 0, fmt.Errorf("invalid interval value %q: %w", value, err)
+	}
+
+	if interval > 100 || interval <= 0 {
+		return 0, fmt.Errorf("invalid interval value %q. It should be between 1 and 100", value)
 	}
 
 	switch unit {
@@ -91,4 +94,24 @@ func GetAndParseWorkersNum() (int, error) {
 		return 0, err
 	}
 	return num, nil
+}
+
+func PrintHelp() {
+	fmt.Println(`Usage:
+  rsshub COMMAND [OPTIONS]
+
+Common Commands:
+   add             add new RSS feed
+   set-interval    set RSS fetch interval
+   set-workers     set number of workers
+   list            list available RSS feeds
+   delete          delete RSS feed
+   articles        show latest articles
+   fetch           starts the background process that periodically fetches and processes RSS feeds using a worker pool
+
+Examples:
+  rsshub --help
+  rsshub add --name TechCrunch --url https://techcrunch.com/feed/
+  rsshub list
+  rsshub fetch`)
 }

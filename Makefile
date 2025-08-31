@@ -1,5 +1,5 @@
 PROJECT_NAME=rsshub
-
+DB_URL=postgres://postgres:changeme@localhost:5432/rsshub?sslmode=disable
 DC=docker-compose
 
 fetch:
@@ -27,3 +27,11 @@ nuke:
 	@echo "Removing all containers, networks, and volumes..."
 	$(DC) down -v
 
+migrate-up:
+	migrate -path=./migrations -database "$(DB_URL)" up
+
+migrate-down:
+	migrate -path=./migrations -database "$(DB_URL)" down
+
+migrate-version:
+	migrate -path=./migrations -database "$(DB_URL)" version

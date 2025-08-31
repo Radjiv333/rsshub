@@ -1,13 +1,12 @@
 package rss
 
 import (
+	"RSSHub/internal/domain"
 	"encoding/xml"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
-
-	"RSSHub/internal/domain"
 )
 
 // --- Structs for XML mapping ---
