@@ -10,7 +10,7 @@ var Log *slog.Logger
 
 func Init() {
 	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug, // Uncomment this for debug purposes
+		// Level: slog.LevelDebug, // Uncomment this for debug purposes
 	})
 	Log = slog.New(handler)
 }

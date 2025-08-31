@@ -49,18 +49,25 @@ func main() {
 		defer stop()
 
 		// Introducing aggregator
-		aggregatorInterval, err := utils.GetAndParseInterval()
+		cliInterval, err := utils.GetAndParseCliInterval()
 		if err != nil {
 			stop()
 			log.Fatalf("failed to fetch interval value from env file: %v", err)
 		}
-		agg = aggregator.NewAggregator(aggregatorInterval, repo)
+		// workersNum, err := utils.GetAndParseWorkersNum()
+		// if err != nil {
+		// 	stop()
+		// 	log.Fatalf("failed to fetch interval value from env file: %v", err)
+		// }
+
+		agg = aggregator.NewAggregator(cliInterval, repo)
 
 		// Starting feed fetch
 		if err := agg.Start(ctx); err != nil {
 			stop()
 			log.Fatalf("failed to start aggregator: %v", err)
 		}
+		fmt.Printf("The background process for fetching feeds has started (interval = %v, workers = 3)")
 
 		// Introducing Sharegator
 		dbInterval, err := utils.GetAndParseDBInterval()
@@ -79,6 +86,7 @@ func main() {
 		logger.Debug("Aggregator stopped cleanly")
 		share.Stop()
 		logger.Debug("Sharegator stopped cleanly")
+		fmt.Println("Graceful shutdown: aggregator stopped")
 
 	case "add":
 		addCmd := flag.NewFlagSet("add", flag.ExitOnError)

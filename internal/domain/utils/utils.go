@@ -46,7 +46,7 @@ func GetAndParseDBInterval() (time.Duration, error) {
 	return interval, nil
 }
 
-func GetAndParseInterval() (time.Duration, error) {
+func GetAndParseCliInterval() (time.Duration, error) {
 	envInterval := config.GetEnvInterval()
 	if len(envInterval) < 2 {
 		return 0, fmt.Errorf("env value for cli_interval is invalid!")
@@ -81,5 +81,13 @@ func ParseDurationToInterval(duration time.Duration) (string, error) {
 		// Default fallback, returning in seconds if not perfectly divisible
 		seconds := int(duration / time.Second)
 		return fmt.Sprintf("%ds", seconds), nil
-	} 
+	}
+}
+
+func GetAndParseWorkersNum() (string, error) {
+	workersNum := config.GetEnvWorkersNum()
+	if _, err := strconv.Atoi(workersNum); err != nil {
+		return "", err
+	}
+	return workersNum, nil
 }
