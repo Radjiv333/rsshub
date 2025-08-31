@@ -6,43 +6,16 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"RSSHub/internal/domain"
 )
 
 // --- Structs for XML mapping ---
 
-var timeLayouts = []string{
-	time.RFC1123Z,
-	time.RFC1123,
-	time.RFC3339,
-	time.RFC822,
-	time.RFC822Z,
-	time.RFC850,
-	time.ANSIC,
-	time.UnixDate,
-	time.RubyDate,
-	"Mon, 02 Jan 2006 15:04:05 -0700", // common RSS custom format
-}
-
-type RSSFeed struct {
-	Channel struct {
-		Title       string    `xml:"title"`
-		Link        string    `xml:"link"`
-		Description string    `xml:"description"`
-		Items       []RSSItem `xml:"item"`
-	} `xml:"channel"`
-}
-
-type RSSItem struct {
-	Title       string `xml:"title"`
-	Link        string `xml:"link"`
-	Description string `xml:"description"`
-	PubDate     string `xml:"pubDate"`
-}
-
 // --- Parser ---
 
 // FetchAndParse retrieves and parses an RSS feed
-func FetchAndParse(url string) (*RSSFeed, error) {
+func FetchAndParse(url string) (*domain.RSSFeed, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch RSS: %w", err)
@@ -58,7 +31,7 @@ func FetchAndParse(url string) (*RSSFeed, error) {
 		return nil, fmt.Errorf("failed to read RSS body: %w", err)
 	}
 
-	var feed RSSFeed
+	var feed domain.RSSFeed
 	if err := xml.Unmarshal(data, &feed); err != nil {
 		return nil, fmt.Errorf("failed to parse RSS XML: %w", err)
 	}
@@ -67,7 +40,7 @@ func FetchAndParse(url string) (*RSSFeed, error) {
 }
 
 func ParsePubDate(pubDate string) (time.Time, error) {
-	for _, layout := range timeLayouts {
+	for _, layout := range domain.TimeLayouts {
 		if t, err := time.Parse(layout, pubDate); err == nil {
 			return t, nil
 		}

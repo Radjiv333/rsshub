@@ -1,4 +1,4 @@
-package share
+package api
 
 import (
 	"context"
@@ -16,6 +16,8 @@ type ShareVariables struct {
 	ticker *time.Ticker
 	agg    domain.Aggregator
 }
+
+var _ domain.ShareVariables = (*ShareVariables)(nil)
 
 func NewShareVar(repo domain.Repository, agg domain.Aggregator) *ShareVariables {
 	return &ShareVariables{repo: repo, agg: agg}
@@ -45,7 +47,7 @@ func (share *ShareVariables) UpdateShare(dbInterval time.Duration, workersNum in
 					logger.Error("error parsing interval that came from db", "error", err, "interval", interval)
 					continue
 				}
-				
+
 				if share.agg.GetCurrentInterval() != interval {
 					share.agg.SetCurrentInterval(interval)
 					share.agg.RestartTicker()

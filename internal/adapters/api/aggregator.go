@@ -1,4 +1,4 @@
-package aggregator
+package api
 
 import (
 	"context"
@@ -174,31 +174,6 @@ func (a *Aggregator) Worker(ctx context.Context, id int) {
 	}
 }
 
-func (a *Aggregator) Resize(workers int) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	if workers == a.workers {
-		return nil // no change
-	}
-
-	diff := workers - a.workers
-	if diff > 0 {
-		// Scale up: add more workers
-		for i := 0; i < diff; i++ {
-			a.wg.Add(1)
-			go a.Worker(context.Background(), a.workers+i)
-		}
-	} else {
-		// Scale down: stop some workers
-		for i := 0; i < -diff; i++ {
-			a.stopWorkers <- struct{}{}
-		}
-	}
-
-	a.workers = workers
-	return nil
-}
 
 func (a *Aggregator) GetCurrentInterval() time.Duration {
 	return a.interval

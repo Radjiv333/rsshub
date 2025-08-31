@@ -14,19 +14,19 @@ import (
 	"syscall"
 	"time"
 
+	"RSSHub/internal/adapters/api"
 	"RSSHub/internal/adapters/db"
-	"RSSHub/internal/adapters/rss"
-	"RSSHub/internal/aggregator"
+
 	"RSSHub/internal/domain"
 	"RSSHub/internal/domain/utils"
-	"RSSHub/internal/share"
+
 	"RSSHub/pkg/lock"
 	"RSSHub/pkg/logger"
 )
 
 func main() {
 	logger.Init()
-	var agg *aggregator.Aggregator
+	var agg *api.Aggregator
 
 	// Establishing DB connection
 	repo, err := db.NewPostgresRepository()
@@ -70,7 +70,7 @@ func main() {
 			log.Fatalf("number of workers cannot be 0")
 		}
 
-		agg = aggregator.NewAggregator(cliInterval, workersNum, repo)
+		agg = api.NewAggregator(cliInterval, workersNum, repo)
 
 		// Starting feed fetch
 		if err := agg.Start(ctx); err != nil {
@@ -85,7 +85,7 @@ func main() {
 			stop()
 			log.Fatalf("failed to fetch DB interval value from env file: %v", err)
 		}
-		share := share.NewShareVar(repo, agg)
+		share := api.NewShareVar(repo, agg)
 
 		// Update the current feed fetch interval
 		share.UpdateShare(dbInterval, workersNum, ctx)
@@ -127,7 +127,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		var testFeed rss.RSSFeed
+		var testFeed domain.RSSFeed
 		if err := xml.Unmarshal(data, &testFeed); err != nil {
 			fmt.Printf("Could not parse the RSS body :(\n")
 			os.Exit(1)
