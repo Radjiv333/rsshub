@@ -125,6 +125,7 @@ func main() {
 			fmt.Printf("Could not parse the RSS body :(\n")
 			os.Exit(1)
 		}
+
 		if testFeed.Name == "" {
 			fmt.Printf("Our struct does not work with this site!\n")
 			os.Exit(1)
@@ -150,6 +151,11 @@ func main() {
 		feedNum := listCmd.Int("num", 0, "Number of feeds to display (default: all)")
 		listCmd.Parse(os.Args[2:])
 
+		if *feedNum < 0 {
+			fmt.Println("The number of feeds should be more than 0")
+			os.Exit(1)
+		}
+
 		feeds, err := repo.ListFeeds(*feedNum)
 		if err != nil {
 			log.Fatalf("failed to list feeds: %v", err)
@@ -174,7 +180,8 @@ func main() {
 
 		err := repo.DeleteFeed(*feedName)
 		if err != nil {
-			log.Fatalf("failed to delete feed: %v", err)
+			fmt.Println(err.Error())
+			os.Exit(1)
 		}
 
 		fmt.Printf("Feed '%s' deleted successfully\n", *feedName)
@@ -187,6 +194,11 @@ func main() {
 
 		if *feedName == "" {
 			fmt.Println("Usage: rsshub articles --feed-name <name> [--num N]")
+			os.Exit(1)
+		}
+
+		if *num <= 0 || *num > 20 {
+			fmt.Println("The number of articles should be more than 0 and less than 20")
 			os.Exit(1)
 		}
 
@@ -217,7 +229,8 @@ func main() {
 		intervalCmd.Parse(os.Args[2:])
 
 		if *duration == "" {
-			log.Fatal("Usage: rsshub set-interval --duration <duration>")
+			fmt.Printf("Usage: rsshub set-interval --duration <duration>\n")
+			os.Exit(1)
 		}
 
 		dur, err := utils.ParseIntervalToDuration(*duration)
@@ -232,23 +245,11 @@ func main() {
 		}
 		fmt.Printf("The Interval of fetching feeds changed to %v\n", dur)
 
-	// case "set-workers":
-	// 	workersCmd := flag.NewFlagSet("set-workers", flag.ExitOnError)
-	// 	workers := workersCmd.Int("workers", 0, "Number of workers to use")
-	// 	workersCmd.Parse(os.Args[2:])
+	case "set-workers":
+		workersCmd := flag.NewFlagSet("set-workers", flag.ExitOnError)
+		workersCmd.Parse(os.Args[2:])
 
-	// 	if *workers <= 0 {
-	// 		fmt.Println("Usage: rsshub set-workers --workers <number>")
-	// 		os.Exit(1)
-	// 	}
-
-	// 	err := agg.Resize(*workers)
-	// 	if err != nil {
-	// 		fmt.Printf("Error resizing workers: %v\n", err)
-	// 		os.Exit(1)
-	// 	}
-
-	// 	fmt.Printf("Number of workers changed to: %d\n", *workers)
+		fmt.Printf("Number of workers changed to: %d\n", *workers)
 	default:
 		fmt.Printf("Unknown command: %s\n", os.Args[1])
 		os.Exit(1)

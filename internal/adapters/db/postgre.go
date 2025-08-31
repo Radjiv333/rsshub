@@ -109,9 +109,24 @@ func (r *PostgresRepository) UpdateFeedTimestamp(feedID string, updatedAt time.T
 }
 
 func (r *PostgresRepository) DeleteFeed(name string) error {
-	query := `DELETE FROM feeds WHERE name = $1;`
-	_, err := r.db.Exec(query, name)
-	return err
+	query := `DELETE FROM feeds WHERE name = $1`
+	result, err := r.db.Exec(query, name)
+	if err != nil {
+		logger.Error("Error deleting feed", "error", err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		logger.Error("Error getting rows affected after delete", "error", err)
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("The feed is not present in db!")
+	}
+
+	return nil
 }
 
 // -------------------------------------------------------------Articles--------------------------------------------------------------------
