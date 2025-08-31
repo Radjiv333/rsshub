@@ -1,0 +1,1 @@
+ migrate -path ./migrations -database "postgres://postgres:changeme@localhost:5432/rsshub?sslmode=disable" version
