@@ -17,7 +17,9 @@ type Repository interface {
 	// Share
 	FetchCliInterval() (string, error)
 	SetInterval(interval string) error
-	SetDefaultCliInterval(interval string) error
+	SetDefaultCliIntervalAndWorkersNum(interval string, workersNum int) error
+	SetWorkers(workersNum int) error
+	FetchWorkersNumber() (int, error)
 
 	// Shutdown
 	Close() error

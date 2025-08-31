@@ -223,18 +223,34 @@ func (r *PostgresRepository) FetchCliInterval() (string, error) {
 }
 
 func (r *PostgresRepository) SetInterval(interval string) error {
-	query := `UPDATE share SET interval = $1 WHERE id = $2`
-	_, err := r.db.Exec(query, interval, 1)
+	query := `UPDATE share SET interval = $1 WHERE id = 1`
+	_, err := r.db.Exec(query, interval)
 	return err
 }
 
-func (r *PostgresRepository) SetDefaultCliInterval(interval string) error {
+func (r *PostgresRepository) SetDefaultCliIntervalAndWorkersNum(interval string, workersNum int) error {
 	query := `
-		INSERT INTO share (id, interval)
-		VALUES (1, $1)
+		INSERT INTO share (id, interval, workers_num)
+		VALUES (1, $1, $2)
 		ON CONFLICT (id)
-		DO UPDATE SET interval = EXCLUDED.interval;
+		DO UPDATE SET interval = EXCLUDED.interval, workers_num = EXCLUDED.workers_num;
 	`
-	_, err := r.db.Exec(query, interval)
+	_, err := r.db.Exec(query, interval, workersNum)
 	return err
+}
+
+func (r *PostgresRepository) SetWorkers(workersNum int) error {
+	query := `UPDATE share SET workers_num = $1 WHERE id = 1`
+	_, err := r.db.Exec(query, workersNum)
+	return err
+}
+
+func (r *PostgresRepository) FetchWorkersNumber() (int, error) {
+	query := `SELECT workers_num FROM share`
+	var workersNum int
+	err := r.db.QueryRow(query).Scan(&workersNum)
+	if err == sql.ErrNoRows {
+		return 0, err
+	}
+	return workersNum, nil
 }

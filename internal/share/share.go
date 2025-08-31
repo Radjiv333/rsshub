@@ -21,9 +21,10 @@ func NewShareVar(repo domain.Repository, agg domain.Aggregator) *ShareVariables 
 	return &ShareVariables{repo: repo, agg: agg}
 }
 
-func (share *ShareVariables) UpdateShare(dbInterval time.Duration, ctx context.Context) {
+func (share *ShareVariables) UpdateShare(dbInterval time.Duration, workersNum int, ctx context.Context) {
 	share.ticker = time.NewTicker(dbInterval)
-	share.repo.SetDefaultCliInterval(config.GetEnvInterval())
+
+	share.repo.SetDefaultCliIntervalAndWorkersNum(config.GetEnvInterval(), workersNum)
 
 	go func() {
 		for {
@@ -33,6 +34,10 @@ func (share *ShareVariables) UpdateShare(dbInterval time.Duration, ctx context.C
 				dbInterval, err := share.repo.FetchCliInterval()
 				if err != sql.ErrNoRows {
 					logger.Debug("Getting interval from db", "interval", dbInterval)
+				}
+				workersNumber, err := share.repo.FetchWorkersNumber()
+				if err != sql.ErrNoRows {
+					logger.Debug("Getting workers number from db", "workers", workersNumber)
 				}
 
 				interval, err := utils.ParseIntervalToDuration(dbInterval)

@@ -84,10 +84,11 @@ func ParseDurationToInterval(duration time.Duration) (string, error) {
 	}
 }
 
-func GetAndParseWorkersNum() (string, error) {
+func GetAndParseWorkersNum() (int, error) {
 	workersNum := config.GetEnvWorkersNum()
-	if _, err := strconv.Atoi(workersNum); err != nil {
-		return "", err
+	num, err := strconv.Atoi(workersNum)
+	if err != nil {
+		return 0, err
 	}
-	return workersNum, nil
+	return num, nil
 }

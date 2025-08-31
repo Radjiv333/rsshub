@@ -30,10 +30,10 @@ type Aggregator struct {
 
 var _ domain.Aggregator = (*Aggregator)(nil)
 
-func NewAggregator(defaultInterval time.Duration, repo domain.Repository) *Aggregator {
+func NewAggregator(defaultInterval time.Duration, workersNum int, repo domain.Repository) *Aggregator {
 	return &Aggregator{
 		interval:    defaultInterval,
-		workers:     3,
+		workers:     workersNum,
 		jobs:        make(chan domain.Feed, 100),
 		repo:        repo,
 		stopWorkers: make(chan struct{}),

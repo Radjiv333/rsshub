@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -60,17 +61,21 @@ func main() {
 		workersNum, err := utils.GetAndParseWorkersNum()
 		if err != nil {
 			stop()
-			log.Fatalf("failed to fetch interval value from env file: %v", err)
+			log.Fatalf("failed to fetch workers number from env file: %v", err)
+		}
+		if workersNum == 0 {
+			stop()
+			log.Fatalf("number of workers cannot be 0")
 		}
 
-		agg = aggregator.NewAggregator(cliInterval, repo)
+		agg = aggregator.NewAggregator(cliInterval, workersNum, repo)
 
 		// Starting feed fetch
 		if err := agg.Start(ctx); err != nil {
 			stop()
 			log.Fatalf("failed to start aggregator: %v", err)
 		}
-		fmt.Printf("The background process for fetching feeds has started (interval = %v, workers = %s)\n", cliInterval, workersNum)
+		fmt.Printf("The background process for fetching feeds has started (interval = %v, workers = %d)\n", cliInterval, workersNum)
 
 		// Introducing Sharegator
 		dbInterval, err := utils.GetAndParseDBInterval()
@@ -81,7 +86,7 @@ func main() {
 		share := share.NewShareVar(repo, agg)
 
 		// Update the current feed fetch interval
-		share.UpdateShare(dbInterval, ctx)
+		share.UpdateShare(dbInterval, workersNum, ctx)
 
 		// Waiting for Ctrl+C
 		<-ctx.Done()
@@ -189,7 +194,7 @@ func main() {
 	case "articles":
 		articlesCmd := flag.NewFlagSet("articles", flag.ExitOnError)
 		feedName := articlesCmd.String("feed-name", "", "Feed name to list articles for")
-		num := articlesCmd.Int("num", 3, "Number of articles to show")
+		num := articlesCmd.Int("num", 3, "Number pkgof articles to show")
 		articlesCmd.Parse(os.Args[2:])
 
 		if *feedName == "" {
@@ -246,10 +251,23 @@ func main() {
 		fmt.Printf("The Interval of fetching feeds changed to %v\n", dur)
 
 	case "set-workers":
-		workersCmd := flag.NewFlagSet("set-workers", flag.ExitOnError)
-		workersCmd.Parse(os.Args[2:])
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: rsshub set-workers <number>")
+			os.Exit(1)
+		}
 
-		fmt.Printf("Number of workers changed to: %d\n", *workers)
+		workersNum, err := strconv.Atoi(os.Args[2]) // Convert the argument to an integer
+		if err != nil || workersNum <= 0 {
+			fmt.Println("Usage: rsshub set-workers <number> (number should be greater than 0)")
+			os.Exit(1)
+		}
+
+		err = repo.SetWorkers(workersNum)
+		if err != nil {
+			log.Fatalf("error updating interval in db: %v", err)
+		}
+		fmt.Printf("The number of workers have changed to %v\n", workersNum)
+
 	default:
 		fmt.Printf("Unknown command: %s\n", os.Args[1])
 		os.Exit(1)

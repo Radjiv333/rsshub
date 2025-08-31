@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS articles (
 
 CREATE TABLE IF NOT EXISTS share (
     id SERIAL PRIMARY KEY CHECK (id = 1),
-    interval TEXT NOT NULL
+    interval TEXT NOT NULL,
+    workers_num INT NOT NULL
 );
 
