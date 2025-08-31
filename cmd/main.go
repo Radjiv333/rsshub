@@ -54,11 +54,11 @@ func main() {
 			stop()
 			log.Fatalf("failed to fetch interval value from env file: %v", err)
 		}
-		// workersNum, err := utils.GetAndParseWorkersNum()
-		// if err != nil {
-		// 	stop()
-		// 	log.Fatalf("failed to fetch interval value from env file: %v", err)
-		// }
+		workersNum, err := utils.GetAndParseWorkersNum()
+		if err != nil {
+			stop()
+			log.Fatalf("failed to fetch interval value from env file: %v", err)
+		}
 
 		agg = aggregator.NewAggregator(cliInterval, repo)
 
@@ -67,7 +67,7 @@ func main() {
 			stop()
 			log.Fatalf("failed to start aggregator: %v", err)
 		}
-		fmt.Printf("The background process for fetching feeds has started (interval = %v, workers = 3)")
+		fmt.Printf("The background process for fetching feeds has started (interval = %v, workers = %s)\n", cliInterval, workersNum)
 
 		// Introducing Sharegator
 		dbInterval, err := utils.GetAndParseDBInterval()
@@ -161,10 +161,8 @@ func main() {
 
 		feed, err := repo.ListFeedByName(*feedName)
 		if err != nil {
-			log.Fatalf("failed to get feed by name: %v", err)
-		}
-		if feed.Name == "" {
-			log.Fatalf("feed '%s' not found", *feedName)
+			fmt.Printf("This feed have not yet been uploaded to the program or was deleted!\n")
+			os.Exit(1)
 		}
 
 		articles, err := repo.ListArticlesByFeed(feed.ID, *num)
@@ -191,7 +189,7 @@ func main() {
 			log.Fatal("Usage: rsshub set-interval --duration <duration>")
 		}
 
-		_, err := utils.ParseIntervalToDuration(*duration)
+		dur, err := utils.ParseIntervalToDuration(*duration)
 		if err != nil {
 			log.Fatalf("invalid duration: %v\n", err)
 		}
@@ -201,6 +199,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("error updating interval in db: %v", err)
 		}
+		fmt.Printf("The Interval of fetching feeds changed to %v\n", dur)
 
 	// case "set-workers":
 	// 	workersCmd := flag.NewFlagSet("set-workers", flag.ExitOnError)
