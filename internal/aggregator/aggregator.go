@@ -15,10 +15,11 @@ import (
 type Aggregator struct {
 	interval time.Duration
 	ticker   *time.Ticker
-	cancel   context.CancelFunc
-	wg       sync.WaitGroup
-	running  bool
-	mu       sync.Mutex
+	// ping     chan struct{}
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
+	running bool
+	mu      sync.Mutex
 
 	jobs    chan domain.Feed
 	workers int
@@ -59,9 +60,6 @@ func (a *Aggregator) Start(ctx context.Context) error {
 		defer a.wg.Done()
 
 		for {
-			if a.ticker == nil {
-				fmt.Println("hsdfl")
-			}
 			select {
 
 			case <-ctx.Done():
@@ -80,6 +78,9 @@ func (a *Aggregator) Start(ctx context.Context) error {
 						return
 					}
 				}
+				// case <-a.ping:
+				// 	a.ticker.Stop()
+				// 	a.ticker = time.NewTicker(20 * time.Millisecond)
 			}
 		}
 	}()
@@ -210,11 +211,10 @@ func (a *Aggregator) SetCurrentInterval(interval time.Duration) {
 func (a *Aggregator) RestartTicker() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	
+
 	if a.ticker != nil {
-		a.ticker.Stop()
+		a.ticker.Reset(a.interval)
 	}
 
-	a.ticker = time.NewTicker(a.interval)
 	logger.Debug("The ticker has restarted with new interval", "interval", a.interval)
 }

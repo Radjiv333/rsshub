@@ -2,3 +2,6 @@
 2. Add config file
 3. Add config for this line:
 shareInterval := time.Duration(5) * time.Second
+
+
+docker exec -it 626344b8da5f psql -U postgres -d rsshub -h localhost -p 5432
