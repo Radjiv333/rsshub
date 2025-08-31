@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"RSSHub/internal/adapters/db"
+	"RSSHub/internal/adapters/rss"
 	"RSSHub/internal/aggregator"
 	"RSSHub/internal/domain"
 	"RSSHub/internal/domain/utils"
@@ -42,6 +43,7 @@ func main() {
 
 	switch os.Args[1] {
 	case "fetch":
+		// lock.Release()
 		// Locking the fetch command, so that that there would not be 2 'fetch' funning apps
 		if err := lock.Acquire(); err != nil {
 			log.Fatalf("cannot start fetch: %v", err)
@@ -125,13 +127,13 @@ func main() {
 			os.Exit(1)
 		}
 
-		var testFeed domain.Feed
+		var testFeed rss.RSSFeed
 		if err := xml.Unmarshal(data, &testFeed); err != nil {
 			fmt.Printf("Could not parse the RSS body :(\n")
 			os.Exit(1)
 		}
 
-		if testFeed.Name == "" {
+		if testFeed.Channel.Title == "" {
 			fmt.Printf("Our struct does not work with this site!\n")
 			os.Exit(1)
 		}

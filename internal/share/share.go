@@ -45,7 +45,7 @@ func (share *ShareVariables) UpdateShare(dbInterval time.Duration, workersNum in
 					logger.Error("error parsing interval that came from db", "error", err, "interval", interval)
 					continue
 				}
-
+				
 				if share.agg.GetCurrentInterval() != interval {
 					share.agg.SetCurrentInterval(interval)
 					share.agg.RestartTicker()
