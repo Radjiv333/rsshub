@@ -250,7 +250,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("error updating interval in db: %v", err)
 		}
-		fmt.Printf("The Interval of fetching feeds changed to %v\n", dur)
+		fmt.Printf("The interval of fetching feeds changed to %v\n", dur)
 
 	case "set-workers":
 		if len(os.Args) < 3 {
