@@ -1,30 +1,31 @@
 package api
 
 import (
-	"RSSHub/internal/adapters/rss"
-	"RSSHub/internal/domain"
-	"RSSHub/pkg/lock"
-	"RSSHub/pkg/logger"
 	"context"
 	"fmt"
 	"sync"
 	"time"
+
+	"RSSHub/internal/adapters/rss"
+	"RSSHub/internal/domain"
+	"RSSHub/pkg/lock"
+	"RSSHub/pkg/logger"
 )
 
 type Aggregator struct {
 	interval time.Duration
 	ticker   *time.Ticker
-	// ping     chan struct{}
-	cancel  context.CancelFunc
-	wg      sync.WaitGroup
-	running bool
-	mu      sync.Mutex
+	cancel   context.CancelFunc
+	wg       sync.WaitGroup
+	running  bool
+	mu       sync.Mutex
 
-	jobs    chan domain.Feed
-	workers int
-	repo    domain.Repository
+	jobs       chan domain.Feed
+	workersNum int
+	repo       domain.Repository
 
-	stopWorkers chan struct{}
+	// stopWorkers chan domain.StopWorker
+	stopWorkers chan int
 }
 
 var _ domain.Aggregator = (*Aggregator)(nil)
@@ -32,10 +33,10 @@ var _ domain.Aggregator = (*Aggregator)(nil)
 func NewAggregator(defaultInterval time.Duration, workersNum int, repo domain.Repository) *Aggregator {
 	return &Aggregator{
 		interval:    defaultInterval,
-		workers:     workersNum,
+		workersNum:  workersNum,
 		jobs:        make(chan domain.Feed, 100),
 		repo:        repo,
-		stopWorkers: make(chan struct{}),
+		stopWorkers: make(chan int),
 	}
 }
 
@@ -48,7 +49,7 @@ func (a *Aggregator) Start(ctx context.Context) error {
 	a.mu.Unlock()
 
 	// Start the worker pool with the desired number of workers
-	for i := 0; i < a.workers; i++ {
+	for i := 0; i < a.workersNum; i++ {
 		a.wg.Add(1)
 		go a.Worker(ctx, i)
 	}
@@ -60,7 +61,6 @@ func (a *Aggregator) Start(ctx context.Context) error {
 
 		for {
 			select {
-
 			case <-ctx.Done():
 				return
 			case <-a.ticker.C:
@@ -77,9 +77,6 @@ func (a *Aggregator) Start(ctx context.Context) error {
 						return
 					}
 				}
-				// case <-a.ping:
-				// 	a.ticker.Stop()
-				// 	a.ticker = time.NewTicker(20 * time.Millisecond)
 			}
 		}
 	}()
@@ -90,6 +87,7 @@ func (a *Aggregator) Start(ctx context.Context) error {
 func (a *Aggregator) Stop() {
 	lock.Release()
 	a.mu.Lock()
+	close(a.stopWorkers)
 	a.cancel()
 	a.ticker.Stop()
 	a.mu.Unlock()
@@ -190,4 +188,34 @@ func (a *Aggregator) RestartTicker() {
 	}
 
 	logger.Debug("The ticker has restarted with new interval", "interval", a.interval)
+}
+
+func (a *Aggregator) GetWorkersNum() int {
+	return a.workersNum
+}
+
+func (a *Aggregator) SetWorkersNum(workersNum int) {
+	a.workersNum = workersNum
+}
+
+func (a *Aggregator) UpdateWorkers(ctx context.Context, oldWorkersNum int, workersNum int) {
+	// fmt.Println("sdfsf")
+	if workersNum > oldWorkersNum {
+		// fmt.Println("hll")
+		for i := 0; i < workersNum-oldWorkersNum; i++ {
+			a.wg.Add(1)
+			go a.Worker(ctx, oldWorkersNum+i)
+		}
+	} else if workersNum < oldWorkersNum {
+		fmt.Println("sdf")
+		for i := 0; i < oldWorkersNum; i++ {
+			a.stopWorkers <- i
+		}
+
+		for i := 0; i < workersNum; i++ {
+			a.wg.Add(1)
+			go a.Worker(ctx, i)
+		}
+	}
+	fmt.Println("bsdfs")
 }

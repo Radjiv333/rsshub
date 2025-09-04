@@ -1,12 +1,6 @@
 package main
 
 import (
-	"RSSHub/internal/adapters/api"
-	"RSSHub/internal/adapters/db"
-	"RSSHub/internal/domain"
-	"RSSHub/internal/domain/utils"
-	"RSSHub/pkg/lock"
-	"RSSHub/pkg/logger"
 	"context"
 	"encoding/xml"
 	"flag"
@@ -19,6 +13,13 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+
+	"RSSHub/internal/adapters/api"
+	"RSSHub/internal/adapters/db"
+	"RSSHub/internal/domain"
+	"RSSHub/internal/domain/utils"
+	"RSSHub/pkg/lock"
+	"RSSHub/pkg/logger"
 )
 
 func main() {
@@ -261,8 +262,8 @@ func main() {
 		}
 
 		workersNum, err := strconv.Atoi(os.Args[2]) // Convert the argument to an integer
-		if err != nil || workersNum <= 0 || workersNum >= 100 {
-			fmt.Println("Usage: rsshub set-workers <number> (number should be greater than 0 or less than or equal to 100)")
+		if err != nil || workersNum <= 0 || workersNum > 10 {
+			fmt.Println("Usage: rsshub set-workers <number> (number should be greater than 0 or less than or equal to 10)")
 			os.Exit(1)
 		}
 

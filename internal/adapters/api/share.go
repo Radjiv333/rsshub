@@ -1,13 +1,14 @@
 package api
 
 import (
+	"context"
+	"database/sql"
+	"time"
+
 	"RSSHub/internal/domain"
 	"RSSHub/internal/domain/utils"
 	"RSSHub/pkg/config"
 	"RSSHub/pkg/logger"
-	"context"
-	"database/sql"
-	"time"
 )
 
 type ShareVariables struct {
@@ -36,9 +37,9 @@ func (share *ShareVariables) UpdateShare(dbInterval time.Duration, workersNum in
 				if err != sql.ErrNoRows {
 					logger.Debug("Getting interval from db", "interval", dbInterval)
 				}
-				workersNumber, err := share.repo.FetchWorkersNumber()
+				workersNum, err := share.repo.FetchWorkersNumber()
 				if err != sql.ErrNoRows {
-					logger.Debug("Getting workers number from db", "workers", workersNumber)
+					logger.Debug("Getting workers number from db", "workers", workersNum)
 				}
 
 				interval, err := utils.ParseIntervalToDuration(dbInterval)
@@ -47,10 +48,19 @@ func (share *ShareVariables) UpdateShare(dbInterval time.Duration, workersNum in
 					continue
 				}
 
+				// Interval Update
 				if share.agg.GetCurrentInterval() != interval {
 					share.agg.SetCurrentInterval(interval)
 					share.agg.RestartTicker()
 					logger.Debug("Current interval after update", "interval", share.agg.GetCurrentInterval())
+				}
+
+				// Worker number update
+				oldWorkersNum := share.agg.GetWorkersNum()
+				if oldWorkersNum != workersNum {
+					share.agg.SetWorkersNum(workersNum)
+					share.agg.UpdateWorkers(ctx, oldWorkersNum, workersNum)
+					logger.Debug("Current workers number after update", "workers number", share.agg.GetWorkersNum())
 				}
 			case <-ctx.Done():
 				return

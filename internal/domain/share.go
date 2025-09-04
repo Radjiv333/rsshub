@@ -9,3 +9,7 @@ type ShareVariables interface {
 	UpdateShare(dbInterval time.Duration, workersNum int, ctx context.Context)
 	Stop()
 }
+
+// type StopWorker struct {
+// 	workerID int
+// }

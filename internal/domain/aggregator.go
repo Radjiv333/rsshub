@@ -13,4 +13,7 @@ type Aggregator interface {
 	SetCurrentInterval(interval time.Duration)
 	RestartTicker()
 	SetInterval(d time.Duration)
+	GetWorkersNum() int
+	SetWorkersNum(workersNum int)
+	UpdateWorkers(ctx context.Context, oldWorkersNum int, workersNum int)
 }
