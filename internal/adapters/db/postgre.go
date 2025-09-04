@@ -1,11 +1,12 @@
 package db
 
 import (
-	"RSSHub/internal/domain"
-	"RSSHub/pkg/logger"
 	"database/sql"
 	"fmt"
 	"time"
+
+	"RSSHub/internal/domain"
+	"RSSHub/pkg/logger"
 
 	_ "github.com/lib/pq"
 )
@@ -18,7 +19,7 @@ type PostgresRepository struct {
 
 // NewPostgresRepository creates a new Postgres repo
 func NewPostgresRepository() (*PostgresRepository, error) {
-	connStr := "host=localhost port=5432 user=postgres password=changeme dbname=rsshub sslmode=disable"
+	connStr := "host=db port=5432 user=postgres password=changeme dbname=rsshub sslmode=disable"
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open db: %w", err)
